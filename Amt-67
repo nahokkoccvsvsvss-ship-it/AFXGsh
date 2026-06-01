@@ -1,7 +1,6 @@
 -- ===========================================
---    AMT UI | MM2 - الإصدار 1.0.7
---    مطور: AMT
---    قائمة مصغرة + رئيسيه
+--    AMT UI | MURDER MYSTERY 2
+--    الإصدار 1.0.9 - مع Auto Claim Codes
 -- ===========================================
 
 local TweenService = game:GetService("TweenService")
@@ -11,13 +10,109 @@ local LocalPlayer = Players.LocalPlayer
 local Workspace = game:GetService("Workspace")
 local RunService = game:GetService("RunService")
 local CoreGui = game:GetService("CoreGui")
+local VirtualInput = game:GetService("VirtualInputManager")
 
 -- الشعار الرئيسي
 local LOGO_URL = "https://www.roblox.com/asset-thumbnail/image?assetId=139907932675117&width=420&height=420"
 local OWNER_IMAGE = "rbxassetid://83489151551233"
 local STAR_IMAGE = "rbxassetid://6031096287"
 
--- حذف النسخة القديمة
+-- ============= قائمة الرموز (Codes) =============
+local CODES = {
+    {code = "FL4M", reward = "🔥 سكين Flames"},
+    {code = "SK00L", reward = "✏️ سيف قلم رصاص + مسدس قلم رصاص"},
+    {code = "CH13F", reward = "🔨 مطرقة رئيسية"},
+    {code = "H1DD3N", reward = "🐉 حيوان Hidden"},
+    {code = "R3TURN", reward = "🗡️ سكين Return"},
+    {code = "AB3Y", reward = "🐱 حيوان Abey"},
+    {code = "S0RRY", reward = "😢 سكين Sorry"},
+    {code = "2023", reward = "💰 400 كوينز"},
+    {code = "DOOM", reward = "💀 سكين Doom"},
+    {code = "DC1", reward = "🎄 حيوان عيد الميلاد"},
+    {code = "IC3Y", reward = "🧊 حيوان Icey"},
+    {code = "C0LD", reward = "❄️ سكين Cold"},
+    {code = "PR1SM", reward = "🌈 سكين Prism"},
+    {code = "G00FY", reward = "🤪 سكين Goofy"},
+    {code = "2022", reward = "💰 500 كوينز"},
+    {code = "2021", reward = "💰 600 كوينز"},
+    {code = "SUB2PATCH", reward = "🎒 حقيبة ظهر"},
+    {code = "SUB2TIGER", reward = "🐯 حيوان Tiger"},
+    {code = "SUB2GAMERROBOT", reward = "🤖 حيوان Robot"},
+    {code = "SUB2FLO", reward = "🦋 حيوان Flo"},
+    {code = "SUB2ELK", reward = "🦌 حيوان Elk"},
+    {code = "SUB2NOOB", reward = "🎮 حيوان Noob"},
+    {code = "SUB2UNIVERSE", reward = "🌌 حيوان Universe"},
+}
+
+-- ============= متغيرات =============
+local autoClaimCodes = false
+local claimedCodes = {}
+
+-- ============= تحميل الرموز المطالب بها سابقاً =============
+pcall(function()
+    makefolder("AMT_MM2")
+    if isfile("AMT_MM2/claimed_codes.json") then
+        local data = readfile("AMT_MM2/claimed_codes.json")
+        claimedCodes = game:GetService("HttpService"):JSONDecode(data)
+    end
+end)
+
+-- ============= حفظ الرموز المطالب بها =============
+local function saveClaimedCodes()
+    pcall(function()
+        writefile("AMT_MM2/claimed_codes.json", game:GetService("HttpService"):JSONEncode(claimedCodes))
+    end)
+end
+
+-- ============= كتابة الكود في الشات =============
+local function typeCode(code)
+    -- فتح الشات
+    VirtualInput:SendKeyEvent(true, Enum.KeyCode.Slash, false, game)
+    task.wait(0.2)
+    VirtualInput:SendKeyEvent(false, Enum.KeyCode.Slash, false, game)
+    task.wait(0.1)
+    
+    -- كتابة الكود
+    for i = 1, #code do
+        local char = string.sub(code, i, i)
+        VirtualInput:SendKeyEvent(true, char, false, game)
+        task.wait(0.05)
+        VirtualInput:SendKeyEvent(false, char, false, game)
+    end
+    task.wait(0.1)
+    
+    -- إرسال
+    VirtualInput:SendKeyEvent(true, Enum.KeyCode.Return, false, game)
+    task.wait(0.1)
+    VirtualInput:SendKeyEvent(false, Enum.KeyCode.Return, false, game)
+end
+
+-- ============= المطالبة بجميع الرموز =============
+local function claimAllCodes()
+    if not autoClaimCodes then return end
+    
+    for _, codeInfo in pairs(CODES) do
+        local code = codeInfo.code
+        local reward = codeInfo.reward
+        
+        -- التحقق إذا كان الكود طالبته قبل
+        if not claimedCodes[code] then
+            typeCode(code)
+            task.wait(1.5)
+            claimedCodes[code] = true
+            saveClaimedCodes()
+            
+            game.StarterGui:SetCore("SendNotification", {
+                Title = "🎁 Auto Claim Codes",
+                Text = "✅ تم المطالبة بـ: " .. code .. " - " .. reward,
+                Duration = 3
+            })
+        end
+        task.wait(1)
+    end
+end
+
+-- ============= حذف النسخة القديمة =============
 pcall(function()
     if CoreGui:FindFirstChild("AMT_UI") then
         CoreGui.AMT_UI:Destroy()
@@ -26,8 +121,9 @@ end)
 
 local GUI = Instance.new("ScreenGui", CoreGui)
 GUI.Name = "AMT_UI"
+GUI.ResetOnSpawn = false
 
--- ============= زر الفتح (الشعار) =============
+-- ============= زر الفتح =============
 local Open = Instance.new("ImageButton", GUI)
 Open.Size = UDim2.new(0, 45, 0, 45)
 Open.Position = UDim2.new(0, 15, 0.5, -22)
@@ -43,129 +139,130 @@ Open.MouseLeave:Connect(function()
     TweenService:Create(Open, TweenInfo.new(0.2), {Size = UDim2.new(0, 45, 0, 45)}):Play()
 end)
 
--- ============= القائمة الرئيسية (مصغرة) =============
+-- ============= القائمة الرئيسية =============
 local Main = Instance.new("Frame", GUI)
 Main.Size = UDim2.new(0, 0, 0, 0)
-Main.Position = UDim2.new(0.5, -160, 0.5, -160)
+Main.Position = UDim2.new(0.5, -180, 0.5, -200)
 Main.BackgroundColor3 = Color3.fromRGB(12, 12, 12)
 Main.ClipsDescendants = true
 Main.Active = true
 Main.Draggable = true
 Main.Visible = false
-Instance.new("UICorner", Main).CornerRadius = UDim.new(0, 12)
+Instance.new("UICorner", Main).CornerRadius = UDim.new(0, 15)
 
 local MainStroke = Instance.new("UIStroke", Main)
-MainStroke.Color = Color3.fromRGB(0, 120, 255)
+MainStroke.Color = Color3.fromRGB(0, 150, 255)
 MainStroke.Thickness = 1.5
 
-TweenService:Create(Main, TweenInfo.new(0.4, Enum.EasingStyle.Back), {
-    Size = UDim2.new(0, 320, 0, 400)
+TweenService:Create(Main, TweenInfo.new(0.5, Enum.EasingStyle.Back), {
+    Size = UDim2.new(0, 400, 0, 520)
 }):Play()
 
 -- ============= الجانب اليسار =============
 local Side = Instance.new("Frame", Main)
-Side.Size = UDim2.new(0, 80, 1, 0)
+Side.Size = UDim2.new(0, 95, 1, 0)
 Side.BackgroundColor3 = Color3.fromRGB(18, 18, 18)
 Instance.new("UICorner", Side).CornerRadius = UDim.new(0, 12)
 
 local Logo = Instance.new("ImageLabel", Side)
-Logo.Size = UDim2.new(0, 30, 0, 30)
-Logo.Position = UDim2.new(0.5, -15, 0, 12)
+Logo.Size = UDim2.new(0, 40, 0, 40)
+Logo.Position = UDim2.new(0.5, -20, 0, 12)
 Logo.BackgroundTransparency = 1
 Logo.Image = LOGO_URL
 
 local Version = Instance.new("TextLabel", Side)
-Version.Size = UDim2.new(1, 0, 0, 10)
-Version.Position = UDim2.new(0, 0, 0, 48)
+Version.Size = UDim2.new(1, 0, 0, 12)
+Version.Position = UDim2.new(0, 0, 0, 58)
 Version.BackgroundTransparency = 1
-Version.Text = "v1.0.7"
+Version.Text = "v1.0.9"
 Version.TextColor3 = Color3.fromRGB(0, 200, 255)
-Version.TextSize = 9
+Version.TextSize = 10
 Version.TextXAlignment = Enum.TextXAlignment.Center
 
 local By = Instance.new("TextLabel", Side)
-By.Size = UDim2.new(1, 0, 0, 10)
-By.Position = UDim2.new(0, 0, 0, 60)
+By.Size = UDim2.new(1, 0, 0, 12)
+By.Position = UDim2.new(0, 0, 0, 72)
 By.BackgroundTransparency = 1
 By.Text = "By AMT"
 By.TextColor3 = Color3.new(1, 1, 1)
-By.TextSize = 9
+By.TextSize = 10
 By.TextXAlignment = Enum.TextXAlignment.Center
 
 -- ============= التبويبات =============
 local Tabs = Instance.new("Frame", Side)
-Tabs.Position = UDim2.new(0, 5, 0, 80)
-Tabs.Size = UDim2.new(1, -10, 0, 250)
+Tabs.Position = UDim2.new(0, 5, 0, 95)
+Tabs.Size = UDim2.new(1, -10, 0, 340)
 Tabs.BackgroundTransparency = 1
 
 local TabsLayout = Instance.new("UIListLayout", Tabs)
-TabsLayout.Padding = UDim.new(0, 4)
+TabsLayout.Padding = UDim.new(0, 5)
 
 local function MakeTab(text)
     local btn = Instance.new("TextButton", Tabs)
-    btn.Size = UDim2.new(1, 0, 0, 26)
+    btn.Size = UDim2.new(1, 0, 0, 30)
     btn.Text = text
     btn.TextColor3 = Color3.new(1, 1, 1)
-    btn.TextSize = 11
+    btn.TextSize = 12
     btn.BackgroundColor3 = Color3.fromRGB(22, 22, 22)
     Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 6)
     return btn
 end
 
 local homeTab = MakeTab("🏠 Home")
-local mainTab = MakeTab("🌟 رئيسيه")
 local farmTab = MakeTab("💰 Farm")
+local codesTab = MakeTab("🎁 Codes")
 local espTab = MakeTab("👁️ ESP")
+local trollTab = MakeTab("😈 Troll")
 local settingsTab = MakeTab("⚙️ Set")
 
 -- ============= منطقة المحتوى =============
 local Content = Instance.new("Frame", Main)
-Content.Position = UDim2.new(0, 90, 0, 8)
-Content.Size = UDim2.new(0, 215, 0, 380)
+Content.Position = UDim2.new(0, 105, 0, 10)
+Content.Size = UDim2.new(0, 280, 0, 495)
 Content.BackgroundColor3 = Color3.fromRGB(16, 16, 16)
 Instance.new("UICorner", Content).CornerRadius = UDim.new(0, 10)
 
 local ContentScroll = Instance.new("ScrollingFrame", Content)
-ContentScroll.Size = UDim2.new(1, -8, 1, -8)
-ContentScroll.Position = UDim2.new(0, 4, 0, 4)
+ContentScroll.Size = UDim2.new(1, -10, 1, -10)
+ContentScroll.Position = UDim2.new(0, 5, 0, 5)
 ContentScroll.BackgroundTransparency = 1
 ContentScroll.ScrollBarThickness = 3
 ContentScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
 
 local ContentList = Instance.new("UIListLayout", ContentScroll)
-ContentList.Padding = UDim.new(0, 6)
+ContentList.Padding = UDim.new(0, 8)
 ContentList.SortOrder = Enum.SortOrder.LayoutOrder
 
 -- ============= دوال مساعدة =============
 local function AddLabel(parent, text, color)
     local lbl = Instance.new("TextLabel", parent)
-    lbl.Size = UDim2.new(1, 0, 0, 20)
+    lbl.Size = UDim2.new(1, 0, 0, 22)
     lbl.BackgroundTransparency = 1
     lbl.Text = text
     lbl.TextColor3 = color or Color3.fromRGB(220, 220, 220)
-    lbl.TextSize = 11
+    lbl.TextSize = 12
     lbl.TextXAlignment = Enum.TextXAlignment.Left
     return lbl
 end
 
 local function AddSmallLabel(parent, text, color)
     local lbl = Instance.new("TextLabel", parent)
-    lbl.Size = UDim2.new(1, 0, 0, 16)
+    lbl.Size = UDim2.new(1, 0, 0, 18)
     lbl.BackgroundTransparency = 1
     lbl.Text = text
     lbl.TextColor3 = color or Color3.fromRGB(160, 160, 160)
-    lbl.TextSize = 10
+    lbl.TextSize = 11
     lbl.TextXAlignment = Enum.TextXAlignment.Left
     return lbl
 end
 
 local function AddButton(parent, text, color, callback)
     local btn = Instance.new("TextButton", parent)
-    btn.Size = UDim2.new(1, 0, 0, 32)
+    btn.Size = UDim2.new(1, 0, 0, 35)
     btn.BackgroundColor3 = color
     btn.Text = text
     btn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    btn.TextSize = 11
+    btn.TextSize = 12
     btn.Font = Enum.Font.GothamSemibold
     Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 6)
     btn.MouseButton1Click:Connect(callback)
@@ -174,11 +271,11 @@ end
 
 local function AddToggle(parent, text, color, state, callback)
     local btn = Instance.new("TextButton", parent)
-    btn.Size = UDim2.new(1, 0, 0, 32)
+    btn.Size = UDim2.new(1, 0, 0, 35)
     btn.BackgroundColor3 = color
     btn.Text = text .. ": " .. (state and "ON" or "OFF")
     btn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    btn.TextSize = 11
+    btn.TextSize = 12
     btn.Font = Enum.Font.GothamSemibold
     Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 6)
     
@@ -208,33 +305,20 @@ local function CreatePage()
 end
 
 local homePage = CreatePage()
-local mainPage = CreatePage()
 local farmPage = CreatePage()
+local codesPage = CreatePage()
 local espPage = CreatePage()
+local trollPage = CreatePage()
 local settingsPage = CreatePage()
 
--- ============= تبويب Home =============
-AddLabel(homePage, "🛡️ AMT UI | MM2", Color3.fromRGB(0, 150, 255))
-AddSmallLabel(homePage, "الإصدار 1.0.7 - قائمة مصغرة", Color3.fromRGB(100, 255, 100))
-AddSmallLabel(homePage, "")
-
-AddLabel(homePage, "📊 المزايا:", Color3.fromRGB(255, 200, 0))
-AddSmallLabel(homePage, "🌟 رئيسيه - صورة المطور", Color3.fromRGB(100, 255, 100))
-AddSmallLabel(homePage, "💰 Auto Farm - جمع الكوينز", Color3.fromRGB(100, 255, 100))
-AddSmallLabel(homePage, "👁️ ESP - كشف القاتل والشريف", Color3.fromRGB(100, 255, 100))
-AddSmallLabel(homePage, "🕊️ Fly Mode - طيران حقيقي", Color3.fromRGB(100, 255, 100))
-AddSmallLabel(homePage, "⚡ Speed Boost - زيادة السرعة", Color3.fromRGB(100, 255, 100))
-
--- ============= تبويب رئيسيه 🌟 =============
--- إطار الصورة الدائري
-local ownerFrame = Instance.new("Frame", mainPage)
-ownerFrame.Size = UDim2.new(0, 120, 0, 120)
-ownerFrame.Position = UDim2.new(0.5, -60, 0, 10)
+-- ============= تبويب Home (مع نجمة Owner) =============
+local ownerFrame = Instance.new("Frame", homePage)
+ownerFrame.Size = UDim2.new(0, 140, 0, 140)
+ownerFrame.Position = UDim2.new(0.5, -70, 0, 5)
 ownerFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 40)
 ownerFrame.BackgroundTransparency = 0.2
 Instance.new("UICorner", ownerFrame).CornerRadius = UDim.new(1, 0)
 
--- النجمة الحمراء الدوارة
 local star = Instance.new("ImageLabel", ownerFrame)
 star.Size = UDim2.new(1, 0, 1, 0)
 star.BackgroundTransparency = 1
@@ -251,7 +335,6 @@ task.spawn(function()
     end
 end)
 
--- صورة Owner
 local ownerImg = Instance.new("ImageLabel", ownerFrame)
 ownerImg.Size = UDim2.new(0.7, 0, 0.7, 0)
 ownerImg.Position = UDim2.new(0.15, 0, 0.15, 0)
@@ -260,9 +343,8 @@ ownerImg.Image = OWNER_IMAGE
 ownerImg.ScaleType = Enum.ScaleType.Fit
 Instance.new("UICorner", ownerImg).CornerRadius = UDim.new(1, 0)
 
--- كلمة Owner
 local ownerText = Instance.new("TextLabel", ownerFrame)
-ownerText.Size = UDim2.new(1, 0, 0, 25)
+ownerText.Size = UDim2.new(1, 0, 0, 30)
 ownerText.Position = UDim2.new(0, 0, 0.85, 0)
 ownerText.BackgroundTransparency = 1
 ownerText.Text = "「 𝐎𝐖𝐍𝐄𝐑 」"
@@ -271,14 +353,50 @@ ownerText.TextScaled = true
 ownerText.Font = Enum.Font.GothamBold
 ownerText.TextXAlignment = Enum.TextXAlignment.Center
 
--- مسافة
-local spacer = Instance.new("Frame", mainPage)
+local spacer = Instance.new("Frame", homePage)
 spacer.Size = UDim2.new(1, 0, 0, 15)
 spacer.BackgroundTransparency = 1
 
-AddSmallLabel(mainPage, "⭐ المطور: AMT", Color3.fromRGB(255, 200, 0))
-AddSmallLabel(mainPage, "📅 الإصدار: 1.0.7", Color3.fromRGB(200, 200, 200))
-AddSmallLabel(mainPage, "🎮 اللعبة: Murder Mystery 2", Color3.fromRGB(200, 200, 200))
+AddLabel(homePage, "🛡️ AMT UI | MURDER MYSTERY 2", Color3.fromRGB(0, 150, 255))
+AddSmallLabel(homePage, "الإصدار 1.0.9 - مع Auto Claim Codes", Color3.fromRGB(100, 255, 100))
+AddSmallLabel(homePage, "")
+
+AddLabel(homePage, "📊 المزايا:", Color3.fromRGB(255, 200, 0))
+AddSmallLabel(homePage, "💰 Auto Farm - جمع الكوينز", Color3.fromRGB(100, 255, 100))
+AddSmallLabel(homePage, "🎁 Auto Claim Codes - رموز تلقائية", Color3.fromRGB(100, 255, 100))
+AddSmallLabel(homePage, "👁️ ESP - كشف القاتل والشريف", Color3.fromRGB(100, 255, 100))
+AddSmallLabel(homePage, "😈 Trolling - طيران وتجميد وتفجير", Color3.fromRGB(100, 255, 100))
+AddSmallLabel(homePage, "🕊️ Fly Mode - طيران حقيقي", Color3.fromRGB(100, 255, 100))
+AddSmallLabel(homePage, "⚡ Speed Boost - زيادة السرعة", Color3.fromRGB(100, 255, 100))
+
+-- ============= تبويب Codes (الميزة الجديدة) =============
+AddLabel(codesPage, "🎁 Auto Claim Codes", Color3.fromRGB(0, 150, 255))
+AddSmallLabel(codesPage, "يطالب بالرموز تلقائياً كل ما تدخل اللعبة", Color3.fromRGB(200, 200, 200))
+AddSmallLabel(codesPage, "")
+
+local autoCodesBtn, getAutoCodes = AddToggle(codesPage, "Auto Claim Codes", Color3.fromRGB(150, 50, 150), false, function(state)
+    autoClaimCodes = state
+    if state then
+        spawn(function()
+            claimAllCodes()
+        end)
+    end
+end)
+
+AddButton(codesPage, "🎁 مطالبة بجميع الرموز الآن", Color3.fromRGB(0, 100, 200), function()
+    spawn(function()
+        claimAllCodes()
+    end)
+end)
+
+AddLabel(codesPage, "📜 قائمة الرموز المتوفرة:", Color3.fromRGB(255, 200, 0))
+AddSmallLabel(codesPage, "")
+
+-- عرض قائمة الرموز
+for _, codeInfo in pairs(CODES) do
+    local status = claimedCodes[codeInfo.code] and "✅" or "❌"
+    AddSmallLabel(codesPage, status .. " " .. codeInfo.code .. " - " .. codeInfo.reward, Color3.fromRGB(200, 200, 200))
+end
 
 -- ============= تبويب Farm =============
 AddLabel(farmPage, "💰 Auto Farm", Color3.fromRGB(0, 150, 255))
@@ -346,24 +464,24 @@ end)
 
 -- ============= تبويب ESP =============
 AddLabel(espPage, "👁️ ESP", Color3.fromRGB(0, 150, 255))
-AddSmallLabel(espPage, "كشف القاتل والشريف", Color3.fromRGB(200, 200, 200))
+AddSmallLabel(espPage, "كشف القاتل والشريف (يد + شنطة)", Color3.fromRGB(200, 200, 200))
 AddSmallLabel(espPage, "")
 
-local espFrame = Instance.new("Frame", espPage)
-espFrame.Size = UDim2.new(1, 0, 0, 0)
-espFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 40)
-espFrame.AutomaticSize = Enum.AutomaticSize.Y
-Instance.new("UICorner", espFrame).CornerRadius = UDim.new(0, 6)
+local espListFrame = Instance.new("Frame", espPage)
+espListFrame.Size = UDim2.new(1, 0, 0, 0)
+espListFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 40)
+espListFrame.AutomaticSize = Enum.AutomaticSize.Y
+Instance.new("UICorner", espListFrame).CornerRadius = UDim.new(0, 6)
 
-local espLayout = Instance.new("UIListLayout", espFrame)
-espLayout.Padding = UDim.new(0, 4)
+local espListLayout = Instance.new("UIListLayout", espListFrame)
+espListLayout.Padding = UDim.new(0, 4)
 
 local refreshBtn = Instance.new("TextButton", espPage)
 refreshBtn.Size = UDim2.new(1, 0, 0, 30)
 refreshBtn.BackgroundColor3 = Color3.fromRGB(0, 100, 200)
 refreshBtn.Text = "🔄 تحديث"
 refreshBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-refreshBtn.TextSize = 11
+refreshBtn.TextSize = 12
 refreshBtn.Font = Enum.Font.GothamSemibold
 Instance.new("UICorner", refreshBtn).CornerRadius = UDim.new(0, 6)
 
@@ -380,11 +498,22 @@ local function GetPlayerRole(player)
             end
         end
     end
+    
+    if player.Backpack then
+        for _, item in pairs(player.Backpack:GetChildren()) do
+            if item:IsA("Tool") then
+                local itemName = item.Name:lower()
+                if itemName:find("knife") then return "murderer"
+                elseif itemName:find("sheriff") or itemName:find("gun") then return "sheriff"
+                end
+            end
+        end
+    end
     return "innocent"
 end
 
-local function UpdateESP()
-    for _, child in pairs(espFrame:GetChildren()) do
+local function UpdateESPList()
+    for _, child in pairs(espListFrame:GetChildren()) do
         if child:IsA("Frame") then child:Destroy() end
     end
     
@@ -399,293 +528,33 @@ local function UpdateESP()
     end
     
     if murderer then
-        local frame = Instance.new("Frame", espFrame)
-        frame.Size = UDim2.new(1, 0, 0, 45)
+        local frame = Instance.new("Frame", espListFrame)
+        frame.Size = UDim2.new(1, 0, 0, 50)
         frame.BackgroundColor3 = Color3.fromRGB(45, 25, 30)
         Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 5)
         
         local avatar = Instance.new("ImageLabel", frame)
-        avatar.Size = UDim2.new(0, 35, 0, 35)
+        avatar.Size = UDim2.new(0, 40, 0, 40)
         avatar.Position = UDim2.new(0, 5, 0, 5)
         avatar.BackgroundColor3 = Color3.fromRGB(20, 20, 30)
         Instance.new("UICorner", avatar).CornerRadius = UDim.new(0, 5)
         avatar.Image = "https://www.roblox.com/avatar-thumbnail/image?userId=" .. murderer.UserId .. "&width=60&height=60&format=png"
         
         local nameLabel = Instance.new("TextLabel", frame)
-        nameLabel.Size = UDim2.new(0.6, 0, 0, 16)
-        nameLabel.Position = UDim2.new(0, 50, 0, 5)
+        nameLabel.Size = UDim2.new(0.6, 0, 0, 18)
+        nameLabel.Position = UDim2.new(0, 55, 0, 6)
         nameLabel.BackgroundTransparency = 1
         nameLabel.Text = murderer.Name
         nameLabel.TextColor3 = Color3.fromRGB(255, 100, 100)
-        nameLabel.TextSize = 11
+        nameLabel.TextSize = 12
         nameLabel.TextXAlignment = Enum.TextXAlignment.Left
         nameLabel.Font = Enum.Font.GothamBold
         
         local roleLabel = Instance.new("TextLabel", frame)
         roleLabel.Size = UDim2.new(0.6, 0, 0, 16)
-        roleLabel.Position = UDim2.new(0, 50, 0, 25)
+        roleLabel.Position = UDim2.new(0, 55, 0, 26)
         roleLabel.BackgroundTransparency = 1
         roleLabel.Text = "🔪 قاتل"
         roleLabel.TextColor3 = Color3.fromRGB(255, 80, 80)
-        roleLabel.TextSize = 10
-        roleLabel.TextXAlignment = Enum.TextXAlignment.Left
-    end
-    
-    if sheriff then
-        local frame = Instance.new("Frame", espFrame)
-        frame.Size = UDim2.new(1, 0, 0, 45)
-        frame.BackgroundColor3 = Color3.fromRGB(25, 35, 55)
-        Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 5)
-        
-        local avatar = Instance.new("ImageLabel", frame)
-        avatar.Size = UDim2.new(0, 35, 0, 35)
-        avatar.Position = UDim2.new(0, 5, 0, 5)
-        avatar.BackgroundColor3 = Color3.fromRGB(20, 20, 30)
-        Instance.new("UICorner", avatar).CornerRadius = UDim.new(0, 5)
-        avatar.Image = "https://www.roblox.com/avatar-thumbnail/image?userId=" .. sheriff.UserId .. "&width=60&height=60&format=png"
-        
-        local nameLabel = Instance.new("TextLabel", frame)
-        nameLabel.Size = UDim2.new(0.6, 0, 0, 16)
-        nameLabel.Position = UDim2.new(0, 50, 0, 5)
-        nameLabel.BackgroundTransparency = 1
-        nameLabel.Text = sheriff.Name
-        nameLabel.TextColor3 = Color3.fromRGB(100, 150, 255)
-        nameLabel.TextSize = 11
-        nameLabel.TextXAlignment = Enum.TextXAlignment.Left
-        nameLabel.Font = Enum.Font.GothamBold
-        
-        local roleLabel = Instance.new("TextLabel", frame)
-        roleLabel.Size = UDim2.new(0.6, 0, 0, 16)
-        roleLabel.Position = UDim2.new(0, 50, 0, 25)
-        roleLabel.BackgroundTransparency = 1
-        roleLabel.Text = "🔫 شريف"
-        roleLabel.TextColor3 = Color3.fromRGB(80, 150, 255)
-        roleLabel.TextSize = 10
-        roleLabel.TextXAlignment = Enum.TextXAlignment.Left
-    end
-    
-    espFrame.Size = UDim2.new(1, 0, 0, espLayout.AbsoluteContentSize.Y + 5)
-end
-
-refreshBtn.MouseButton1Click:Connect(UpdateESP)
-
-task.spawn(function()
-    while true do
-        UpdateESP()
-        task.wait(1)
-    end
-end)
-
-local espEnabled = false
-local espBtn, getEsp = AddToggle(espPage, "Highlight", Color3.fromRGB(100, 50, 150), false, function(state)
-    espEnabled = state
-end)
-
-local highlights = {}
-task.spawn(function()
-    while true do
-        for _, h in pairs(highlights) do pcall(function() h:Destroy() end) end
-        highlights = {}
-        if espEnabled then
-            for _, player in pairs(Players:GetPlayers()) do
-                if player ~= LocalPlayer and player.Character then
-                    local role = GetPlayerRole(player)
-                    local color = Color3.fromRGB(50, 255, 50)
-                    if role == "murderer" then color = Color3.fromRGB(255, 50, 50)
-                    elseif role == "sheriff" then color = Color3.fromRGB(50, 120, 255)
-                    end
-                    local hl = Instance.new("Highlight")
-                    hl.Parent = player.Character
-                    hl.FillColor = color
-                    hl.OutlineColor = Color3.new(1, 1, 1)
-                    hl.FillTransparency = 0.5
-                    table.insert(highlights, hl)
-                end
-            end
-        end
-        task.wait(0.5)
-    end
-end)
-
--- ============= تبويب Settings =============
-AddLabel(settingsPage, "⚙️ Settings", Color3.fromRGB(0, 150, 255))
-AddSmallLabel(settingsPage, "التحكم بالشخصية", Color3.fromRGB(200, 200, 200))
-AddSmallLabel(settingsPage, "")
-
--- Speed Boost
-local speedActive = false
-local speedBtn, getSpeed = AddToggle(settingsPage, "Speed Boost (x3)", Color3.fromRGB(0, 150, 100), false, function(state)
-    speedActive = state
-    local char = LocalPlayer.Character
-    local hum = char and char:FindFirstChild("Humanoid")
-    if hum then
-        if speedActive then
-            hum.WalkSpeed = 80
-        else
-            hum.WalkSpeed = 16
-        end
-    end
-end)
-
--- Fly Mode
-local flyActive = false
-local flyConnection = nil
-local flyBodyVelocity = nil
-
-local flyBtn = Instance.new("TextButton", settingsPage)
-flyBtn.Size = UDim2.new(1, 0, 0, 32)
-flyBtn.BackgroundColor3 = Color3.fromRGB(0, 100, 200)
-flyBtn.Text = "Fly Mode: OFF"
-flyBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-flyBtn.TextSize = 11
-flyBtn.Font = Enum.Font.GothamSemibold
-Instance.new("UICorner", flyBtn).CornerRadius = UDim.new(0, 6)
-
-local function startFly()
-    local char = LocalPlayer.Character
-    if not char then return end
-    local hum = char:FindFirstChild("Humanoid")
-    local root = char:FindFirstChild("HumanoidRootPart")
-    if not hum or not root then return end
-    
-    hum:SetStateEnabled(Enum.HumanoidStateType.Jumping, false)
-    hum:SetStateEnabled(Enum.HumanoidStateType.FallingDown, false)
-    hum.PlatformStand = true
-    
-    flyBodyVelocity = Instance.new("BodyVelocity")
-    flyBodyVelocity.MaxForce = Vector3.new(100000, 100000, 100000)
-    flyBodyVelocity.P = 100000
-    flyBodyVelocity.Parent = root
-    
-    flyConnection = RunService.Heartbeat:Connect(function()
-        if flyActive and root and flyBodyVelocity then
-            local move = Vector3.new(0, 0, 0)
-            if UIS:IsKeyDown(Enum.KeyCode.W) then move = move + Vector3.new(0, 0, -1) end
-            if UIS:IsKeyDown(Enum.KeyCode.S) then move = move + Vector3.new(0, 0, 1) end
-            if UIS:IsKeyDown(Enum.KeyCode.A) then move = move + Vector3.new(-1, 0, 0) end
-            if UIS:IsKeyDown(Enum.KeyCode.D) then move = move + Vector3.new(1, 0, 0) end
-            if UIS:IsKeyDown(Enum.KeyCode.Space) then move = move + Vector3.new(0, 1, 0) end
-            if UIS:IsKeyDown(Enum.KeyCode.LeftControl) then move = move + Vector3.new(0, -1, 0) end
-            if move.Magnitude > 0 then
-                flyBodyVelocity.Velocity = move.Unit * 60
-            else
-                flyBodyVelocity.Velocity = Vector3.new(0, 0, 0)
-            end
-        end
-    end)
-end
-
-local function stopFly()
-    if flyConnection then flyConnection:Disconnect() end
-    if flyBodyVelocity then flyBodyVelocity:Destroy() end
-    local char = LocalPlayer.Character
-    if char then
-        local hum = char:FindFirstChild("Humanoid")
-        if hum then
-            hum:SetStateEnabled(Enum.HumanoidStateType.Jumping, true)
-            hum:SetStateEnabled(Enum.HumanoidStateType.FallingDown, true)
-            hum.PlatformStand = false
-        end
-    end
-end
-
-flyBtn.MouseButton1Click:Connect(function()
-    flyActive = not flyActive
-    flyBtn.Text = "Fly Mode: " .. (flyActive and "ON" or "OFF")
-    flyBtn.BackgroundColor3 = flyActive and Color3.fromRGB(50, 180, 50) or Color3.fromRGB(0, 100, 200)
-    if flyActive then
-        startFly()
-    else
-        stopFly()
-    end
-end)
-
-task.spawn(function()
-    while true do
-        local char = LocalPlayer.Character
-        local hum = char and char:FindFirstChild("Humanoid")
-        if hum and not flyActive then
-            if speedActive then
-                hum.WalkSpeed = 80
-            else
-                if hum.WalkSpeed == 80 then
-                    hum.WalkSpeed = 16
-                end
-            end
-        end
-        task.wait(0.5)
-    end
-end)
-
--- ============= زر الإغلاق =============
-local CloseBtn = Instance.new("TextButton", Main)
-CloseBtn.Size = UDim2.new(0, 22, 0, 22)
-CloseBtn.Position = UDim2.new(1, -28, 0, 6)
-CloseBtn.Text = "✕"
-CloseBtn.TextColor3 = Color3.new(1, 1, 1)
-CloseBtn.BackgroundColor3 = Color3.fromRGB(200, 40, 40)
-Instance.new("UICorner", CloseBtn).CornerRadius = UDim.new(1, 0)
-
-local function OpenGUI()
-    Main.Visible = true
-    Open.Visible = false
-    TweenService:Create(Main, TweenInfo.new(0.4, Enum.EasingStyle.Back), {
-        Size = UDim2.new(0, 320, 0, 400)
-    }):Play()
-end
-
-local function CloseGUI()
-    TweenService:Create(Main, TweenInfo.new(0.3, Enum.EasingStyle.Quad), {
-        Size = UDim2.new(0, 0, 0, 0)
-    }):Play()
-    task.wait(0.3)
-    Main.Visible = false
-    Open.Visible = true
-end
-
-CloseBtn.MouseButton1Click:Connect(CloseGUI)
-Open.MouseButton1Click:Connect(OpenGUI)
-
--- تبديل الصفحات
-local function showPage(page, activeTab)
-    homePage.Visible = false
-    mainPage.Visible = false
-    farmPage.Visible = false
-    espPage.Visible = false
-    settingsPage.Visible = false
-    page.Visible = true
-    
-    for _, btn in pairs(Tabs:GetChildren()) do
-        if btn:IsA("TextButton") then
-            btn.BackgroundColor3 = Color3.fromRGB(22, 22, 22)
-        end
-    end
-    activeTab.BackgroundColor3 = Color3.fromRGB(0, 120, 255)
-    
-    task.wait(0.1)
-    ContentScroll.CanvasSize = UDim2.new(0, 0, 0, ContentList.AbsoluteContentSize.Y + 15)
-end
-
-homeTab.MouseButton1Click:Connect(function() showPage(homePage, homeTab) end)
-mainTab.MouseButton1Click:Connect(function() showPage(mainPage, mainTab) end)
-farmTab.MouseButton1Click:Connect(function() showPage(farmPage, farmTab) end)
-espTab.MouseButton1Click:Connect(function() showPage(espPage, espTab) end)
-settingsTab.MouseButton1Click:Connect(function() showPage(settingsPage, settingsTab) end)
-
-ContentList:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
-    if homePage.Visible or mainPage.Visible or farmPage.Visible or espPage.Visible or settingsPage.Visible then
-        ContentScroll.CanvasSize = UDim2.new(0, 0, 0, ContentList.AbsoluteContentSize.Y + 15)
-    end
-end)
-
--- تفعيل الصفحة الأولى
-showPage(homePage, homeTab)
-task.wait(0.5)
-UpdateESP()
-
--- رسالة ترحيب
-game.StarterGui:SetCore("SendNotification", {
-    Title = "🛡️ AMT UI v1.0.7",
-    Text = "✅ تم التحميل | قائمة مصغرة + رئيسيه",
-    Duration = 3
-})
+        roleLabel.TextSize = 11
+        roleLabel.TextXAlignm
