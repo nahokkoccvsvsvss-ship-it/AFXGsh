@@ -557,4 +557,354 @@ local function UpdateESPList()
         roleLabel.Text = "🔪 قاتل"
         roleLabel.TextColor3 = Color3.fromRGB(255, 80, 80)
         roleLabel.TextSize = 11
-        roleLabel.TextXAlignm
+        roleLabel.TextXAlignment = Enum.TextXAlignment.Left
+    end
+    
+    if sheriff then
+        local frame = Instance.new("Frame", espListFrame)
+        frame.Size = UDim2.new(1, 0, 0, 50)
+        frame.BackgroundColor3 = Color3.fromRGB(25, 35, 55)
+        Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 5)
+        
+        local avatar = Instance.new("ImageLabel", frame)
+        avatar.Size = UDim2.new(0, 40, 0, 40)
+        avatar.Position = UDim2.new(0, 5, 0, 5)
+        avatar.BackgroundColor3 = Color3.fromRGB(20, 20, 30)
+        Instance.new("UICorner", avatar).CornerRadius = UDim.new(0, 5)
+        avatar.Image = "https://www.roblox.com/avatar-thumbnail/image?userId=" .. sheriff.UserId .. "&width=60&height=60&format=png"
+        
+        local nameLabel = Instance.new("TextLabel", frame)
+        nameLabel.Size = UDim2.new(0.6, 0, 0, 18)
+        nameLabel.Position = UDim2.new(0, 55, 0, 6)
+        nameLabel.BackgroundTransparency = 1
+        nameLabel.Text = sheriff.Name
+        nameLabel.TextColor3 = Color3.fromRGB(100, 150, 255)
+        nameLabel.TextSize = 12
+        nameLabel.TextXAlignment = Enum.TextXAlignment.Left
+        nameLabel.Font = Enum.Font.GothamBold
+        
+        local roleLabel = Instance.new("TextLabel", frame)
+        roleLabel.Size = UDim2.new(0.6, 0, 0, 16)
+        roleLabel.Position = UDim2.new(0, 55, 0, 26)
+        roleLabel.BackgroundTransparency = 1
+        roleLabel.Text = "🔫 شريف"
+        roleLabel.TextColor3 = Color3.fromRGB(80, 150, 255)
+        roleLabel.TextSize = 11
+        roleLabel.TextXAlignment = Enum.TextXAlignment.Left
+    end
+    
+    espListFrame.Size = UDim2.new(1, 0, 0, espListLayout.AbsoluteContentSize.Y + 5)
+end
+
+refreshBtn.MouseButton1Click:Connect(UpdateESPList)
+
+task.spawn(function()
+    while true do
+        UpdateESPList()
+        task.wait(1)
+    end
+end)
+
+local espEnabled = false
+local highlights = {}
+
+local function clearESP()
+    for _, h in pairs(highlights) do pcall(function() h:Destroy() end) end
+    highlights = {}
+end
+
+local function updateESP()
+    if not espEnabled then return end
+    clearESP()
+    
+    for _, player in pairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer and player.Character then
+            local role = GetPlayerRole(player)
+            local color = nil
+            
+            if role == "murderer" then
+                color = Color3.fromRGB(255, 50, 50)
+            elseif role == "sheriff" then
+                color = Color3.fromRGB(50, 100, 255)
+            else
+                color = Color3.fromRGB(50, 255, 50)
+            end
+            
+            local highlight = Instance.new("Highlight")
+            highlight.FillColor = color
+            highlight.FillTransparency = 0.6
+            highlight.OutlineColor = color
+            highlight.OutlineTransparency = 0.2
+            highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+            highlight.Parent = player.Character
+            table.insert(highlights, highlight)
+        end
+    end
+end
+
+local espToggle, getEsp = AddToggle(espPage, "Highlight", Color3.fromRGB(100, 50, 150), false, function(state)
+    espEnabled = state
+    if state then updateESP() else clearESP() end
+end)
+
+task.spawn(function()
+    while true do
+        if espEnabled then updateESP() end
+        task.wait(0.5)
+    end
+end)
+
+-- ============= تبويب Troll =============
+AddLabel(trollPage, "😈 Trolling", Color3.fromRGB(255, 80, 80))
+AddSmallLabel(trollPage, "أدوات التخريب", Color3.fromRGB(200, 200, 200))
+AddSmallLabel(trollPage, "")
+
+local function getClosestPlayer()
+    local char = LocalPlayer.Character
+    local root = char and char:FindFirstChild("HumanoidRootPart")
+    if not root then return nil end
+    local closest = nil
+    local closestDist = math.huge
+    for _, player in pairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer and player.Character then
+            local pr = player.Character:FindFirstChild("HumanoidRootPart")
+            if pr then
+                local dist = (root.Position - pr.Position).Magnitude
+                if dist < closestDist and dist < 50 then
+                    closestDist = dist
+                    closest = player
+                end
+            end
+        end
+    end
+    return closest
+end
+
+AddButton(trollPage, "💨 طيران لاعب", Color3.fromRGB(200, 80, 0), function()
+    local target = getClosestPlayer()
+    if target and target.Character then
+        local hum = target.Character:FindFirstChild("Humanoid")
+        local root = target.Character:FindFirstChild("HumanoidRootPart")
+        if hum and root then
+            hum.WalkSpeed = 0
+            hum.JumpPower = 0
+            hum.PlatformStand = true
+            root.Velocity = Vector3.new(math.random(-500, 500), math.random(300, 600), math.random(-500, 500))
+        end
+    end
+end)
+
+AddButton(trollPage, "❄️ تجميد لاعب", Color3.fromRGB(0, 100, 200), function()
+    local target = getClosestPlayer()
+    if target and target.Character then
+        local hum = target.Character:FindFirstChild("Humanoid")
+        if hum then
+            hum.WalkSpeed = 0
+            hum.JumpPower = 0
+        end
+    end
+end)
+
+AddButton(trollPage, "💥 تفجير لاعب", Color3.fromRGB(200, 100, 0), function()
+    local target = getClosestPlayer()
+    if target and target.Character then
+        local hum = target.Character:FindFirstChild("Humanoid")
+        if hum then
+            hum.Health = 0
+            local exp = Instance.new("Explosion")
+            exp.Position = target.Character.HumanoidRootPart.Position
+            exp.Parent = Workspace
+        end
+    end
+end)
+
+-- ============= تبويب Settings =============
+AddLabel(settingsPage, "⚙️ Settings", Color3.fromRGB(0, 150, 255))
+AddSmallLabel(settingsPage, "التحكم بالشخصية", Color3.fromRGB(200, 200, 200))
+AddSmallLabel(settingsPage, "")
+
+local speedActive = false
+local speedBtn, getSpeed = AddToggle(settingsPage, "Speed Boost (x3)", Color3.fromRGB(0, 150, 100), false, function(state)
+    speedActive = state
+    local char = LocalPlayer.Character
+    local hum = char and char:FindFirstChild("Humanoid")
+    if hum then
+        if speedActive then
+            hum.WalkSpeed = 80
+        else
+            hum.WalkSpeed = 16
+        end
+    end
+end)
+
+local flyActive = false
+local flyConnection = nil
+local flyBodyVelocity = nil
+
+local flyBtn = Instance.new("TextButton", settingsPage)
+flyBtn.Size = UDim2.new(1, 0, 0, 35)
+flyBtn.BackgroundColor3 = Color3.fromRGB(0, 100, 200)
+flyBtn.Text = "Fly Mode: OFF"
+flyBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+flyBtn.TextSize = 12
+flyBtn.Font = Enum.Font.GothamSemibold
+Instance.new("UICorner", flyBtn).CornerRadius = UDim.new(0, 6)
+
+local function startFly()
+    local char = LocalPlayer.Character
+    if not char then return end
+    local hum = char:FindFirstChild("Humanoid")
+    local root = char:FindFirstChild("HumanoidRootPart")
+    if not hum or not root then return end
+    
+    hum:SetStateEnabled(Enum.HumanoidStateType.Jumping, false)
+    hum:SetStateEnabled(Enum.HumanoidStateType.FallingDown, false)
+    hum.PlatformStand = true
+    
+    flyBodyVelocity = Instance.new("BodyVelocity")
+    flyBodyVelocity.MaxForce = Vector3.new(100000, 100000, 100000)
+    flyBodyVelocity.P = 100000
+    flyBodyVelocity.Parent = root
+    
+    if flyConnection then flyConnection:Disconnect() end
+    
+    flyConnection = RunService.Heartbeat:Connect(function()
+        if flyActive and root and flyBodyVelocity then
+            local move = Vector3.new(0, 0, 0)
+            if UIS:IsKeyDown(Enum.KeyCode.W) then move = move + Vector3.new(0, 0, -1) end
+            if UIS:IsKeyDown(Enum.KeyCode.S) then move = move + Vector3.new(0, 0, 1) end
+            if UIS:IsKeyDown(Enum.KeyCode.A) then move = move + Vector3.new(-1, 0, 0) end
+            if UIS:IsKeyDown(Enum.KeyCode.D) then move = move + Vector3.new(1, 0, 0) end
+            if UIS:IsKeyDown(Enum.KeyCode.Space) then move = move + Vector3.new(0, 1, 0) end
+            if UIS:IsKeyDown(Enum.KeyCode.LeftControl) then move = move + Vector3.new(0, -1, 0) end
+            if move.Magnitude > 0 then
+                flyBodyVelocity.Velocity = move.Unit * 60
+            else
+                flyBodyVelocity.Velocity = Vector3.new(0, 0, 0)
+            end
+        end
+    end)
+end
+
+local function stopFly()
+    if flyConnection then flyConnection:Disconnect() end
+    if flyBodyVelocity then flyBodyVelocity:Destroy() end
+    local char = LocalPlayer.Character
+    if char then
+        local hum = char:FindFirstChild("Humanoid")
+        if hum then
+            hum:SetStateEnabled(Enum.HumanoidStateType.Jumping, true)
+            hum:SetStateEnabled(Enum.HumanoidStateType.FallingDown, true)
+            hum.PlatformStand = false
+        end
+    end
+end
+
+flyBtn.MouseButton1Click:Connect(function()
+    flyActive = not flyActive
+    flyBtn.Text = "Fly Mode: " .. (flyActive and "ON" or "OFF")
+    flyBtn.BackgroundColor3 = flyActive and Color3.fromRGB(50, 180, 50) or Color3.fromRGB(0, 100, 200)
+    if flyActive then
+        startFly()
+    else
+        stopFly()
+    end
+end)
+
+task.spawn(function()
+    while true do
+        local char = LocalPlayer.Character
+        local hum = char and char:FindFirstChild("Humanoid")
+        if hum and not flyActive then
+            if speedActive then
+                hum.WalkSpeed = 80
+            else
+                if hum.WalkSpeed == 80 then
+                    hum.WalkSpeed = 16
+                end
+            end
+        end
+        task.wait(0.5)
+    end
+end)
+
+-- ============= زر الإغلاق =============
+local CloseBtn = Instance.new("TextButton", Main)
+CloseBtn.Size = UDim2.new(0, 25, 0, 25)
+CloseBtn.Position = UDim2.new(1, -30, 0, 8)
+CloseBtn.Text = "✕"
+CloseBtn.TextColor3 = Color3.new(1, 1, 1)
+CloseBtn.BackgroundColor3 = Color3.fromRGB(200, 40, 40)
+Instance.new("UICorner", CloseBtn).CornerRadius = UDim.new(1, 0)
+
+local function OpenGUI()
+    Main.Visible = true
+    Open.Visible = false
+    TweenService:Create(Main, TweenInfo.new(0.4, Enum.EasingStyle.Back), {
+        Size = UDim2.new(0, 400, 0, 520)
+    }):Play()
+end
+
+local function CloseGUI()
+    TweenService:Create(Main, TweenInfo.new(0.3, Enum.EasingStyle.Quad), {
+        Size = UDim2.new(0, 0, 0, 0)
+    }):Play()
+    task.wait(0.3)
+    Main.Visible = false
+    Open.Visible = true
+end
+
+CloseBtn.MouseButton1Click:Connect(CloseGUI)
+Open.MouseButton1Click:Connect(OpenGUI)
+
+-- تبديل الصفحات
+local function showPage(page, activeTab)
+    homePage.Visible = false
+    farmPage.Visible = false
+    codesPage.Visible = false
+    espPage.Visible = false
+    trollPage.Visible = false
+    settingsPage.Visible = false
+    page.Visible = true
+    
+    for _, btn in pairs(Tabs:GetChildren()) do
+        if btn:IsA("TextButton") then
+            btn.BackgroundColor3 = Color3.fromRGB(22, 22, 22)
+        end
+    end
+    activeTab.BackgroundColor3 = Color3.fromRGB(0, 120, 255)
+    
+    task.wait(0.1)
+    ContentScroll.CanvasSize = UDim2.new(0, 0, 0, ContentList.AbsoluteContentSize.Y + 15)
+end
+
+homeTab.MouseButton1Click:Connect(function() showPage(homePage, homeTab) end)
+farmTab.MouseButton1Click:Connect(function() showPage(farmPage, farmTab) end)
+codesTab.MouseButton1Click:Connect(function() showPage(codesPage, codesTab) end)
+espTab.MouseButton1Click:Connect(function() showPage(espPage, espTab) end)
+trollTab.MouseButton1Click:Connect(function() showPage(trollPage, trollTab) end)
+settingsTab.MouseButton1Click:Connect(function() showPage(settingsPage, settingsTab) end)
+
+ContentList:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+    if homePage.Visible or farmPage.Visible or codesPage.Visible or espPage.Visible or trollPage.Visible or settingsPage.Visible then
+        ContentScroll.CanvasSize = UDim2.new(0, 0, 0, ContentList.AbsoluteContentSize.Y + 15)
+    end
+end)
+
+-- تفعيل الصفحة الأولى
+showPage(homePage, homeTab)
+task.wait(0.5)
+UpdateESPList()
+
+-- محاولة المطالبة بالرموز تلقائياً عند التشغيل (مرة واحدة)
+task.wait(3)
+spawn(function()
+    claimAllCodes()
+end)
+
+-- رسالة ترحيب
+game.StarterGui:SetCore("SendNotification", {
+    Title = "🛡️ AMT UI v1.0.9",
+    Text = "✅ تم التحميل!\n🎁 ميزة جديدة: Auto Claim Codes - يطالب بالرموز تلقائياً",
+    Duration = 5
+})
